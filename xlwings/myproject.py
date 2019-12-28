@@ -26,7 +26,7 @@ def main():
             value = int(value)
             value = str(value)
         elif isinstance(value, str):
-            if not value.isdigit():
+            if not value.isalnum():
                 continue
         else:
             print('unknown type')
@@ -79,7 +79,7 @@ def main():
             value = int(value)
             value = str(value)
         elif isinstance(value, str):
-            if not value.isdigit():
+            if not value.isalnum():
                 continue
         else:
             print('unknown type')
