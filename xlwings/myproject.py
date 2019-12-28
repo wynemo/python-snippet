@@ -1,27 +1,19 @@
 from pprint import pprint
-import time
 
 import xlwings as xw
 
 
 @xw.sub  # only required if you want to import it or run it via UDF Server
 def main():
-    start = time.time()
     wb = xw.Book.caller()
-    wb.app.screen_updating = False
     column1 = []
     row_count = 0
     all_data = {}
     child_desc_num = {}
-    for each in wb.sheets['bom'].range("A1:A5000"):
+    for each in wb.sheets['bom'].range("A1:A10000"):
         if each.value is None:
             break
-        row_count += 1
-    
-    for row in wb.sheets['bom'].range((2, 1), (row_count, 6)).value:
-        if not row or len(row) != 6:
-            continue
-        value = row[0]
+        value = each.value
         if isinstance(value, (float, int)):
             value = int(value)
             value = str(value)
@@ -35,11 +27,11 @@ def main():
         parent_num = value
         all_data.setdefault(parent_num, {})
         all_data[parent_num].setdefault('nodes', [])
-        parent_desp = row[1]
-        child_desp = row[2]
-        chart = row[3]
-        usage = row[4]
-        note = row[5]
+        parent_desp = wb.sheets['bom'].range((each.row, each.column + 1)).value
+        child_desp = wb.sheets['bom'].range((each.row, each.column + 2)).value
+        chart = wb.sheets['bom'].range((each.row, each.column + 3)).value
+        usage = wb.sheets['bom'].range((each.row, each.column + 4)).value
+        note = wb.sheets['bom'].range((each.row, each.column + 5)).value
         child_desc_num[child_desp] = parent_num
         column1.append(value)
         all_data[parent_num]['nodes'].append({
@@ -51,10 +43,10 @@ def main():
             'note': note,
         })
 
-    # print(child_desc_num)
+    print(child_desc_num)
     for _key, _value in all_data.items():
         for _each in _value['nodes']:
-            # print(_each['parent_desp'])
+            print(_each['parent_desp'])
             if _each['parent_desp'] in child_desc_num:
                 _parent_num = child_desc_num[_each['parent_desp']]
                 all_data[_parent_num].setdefault('child', [])
@@ -90,16 +82,13 @@ def main():
             'num': num,
         })
 
-    end = time.time()
-    print('time', end - start)
-
-    nodes = []
     for _each in selection_data:
 
         num = _each['num']
         if num not in all_data:
             return
         tmp_data = [num]
+        nodes = []
         while 1:
             if not tmp_data:
                 break
@@ -113,23 +102,28 @@ def main():
                     curren_data.extend(new_child)
             tmp_data = curren_data
 
-    nodes = [list(each.values()) for each in nodes]
+        for node in nodes:
+            xw.Range((current_row, old_col)).value = node['parent_num']
+            xw.Range((current_row, old_col + 1)).value = node['parent_desp']
+            xw.Range((current_row, old_col + 2)).value = node['child_desp']
+            xw.Range((current_row, old_col + 3)).value = node['chart']
+            xw.Range((current_row, old_col + 4)).value = node['usage']
+            xw.Range((current_row, old_col + 5)).value = node['note']
+            current_row += 1
 
-    xw.Range((current_row, old_col), (current_row + len(nodes), old_col + 5)).value = nodes
-    # for node in nodes:
-    #     xw.Range((current_row, old_col)).value = node['parent_num']
-    #     xw.Range((current_row, old_col + 1)).value = node['parent_desp']
-    #     xw.Range((current_row, old_col + 2)).value = node['child_desp']
-    #     xw.Range((current_row, old_col + 3)).value = node['chart']
-    #     xw.Range((current_row, old_col + 4)).value = node['usage']
-    #     xw.Range((current_row, old_col + 5)).value = node['note']
-    #     current_row += 1
 
-    end = time.time()
-    print('time2', end - start)
+    # for each in wb.app.selection:
+    #     if column_num is not None and column_num != each.column:
+    #         return  # only can select one column
+    #     if column_num is None:
+    #         column_num = each.column
+    #     value = d1.get(each.value, None) or d2.get(each.value, None)
+    #     c = (column_num + 1, each.row)
+    #     print(c, value)
+    #     xw.Range((each.row, column_num + 1)).value = value
 
 
 if __name__ == "__main__":
-    # xw.books.active.set_mock_caller()
-    # main()
-    xw.serve()
+    xw.books.active.set_mock_caller()
+    main()
+    # xw.serve()
